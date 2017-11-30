@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- You may freely edit this file. See commented blocks below for -->
+<!-- some examples of how to customize the build. -->
+<!-- (If you delete it and reopen the project it will be recreated.) -->
+<!-- By default, only the Clean and Build commands use this build script. -->
+<!-- Commands such as Run, Debug, and Test only use this build script if -->
+<!-- the Compile on Save feature is turned off for the project. -->
+<!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
+<!-- in the project's Project Properties dialog box.-->
+<project name="ChangeLicenceTag" default="default" basedir=".">
+   <description>Builds, tests, and runs the project ChangeLicenceTag.</description>
+   <import file="nbproject/build-impl.xml"/>
+    
+   <!-- =================================================================== -->
+   <!-- Non NB targets                                                          -->
+   <!-- =================================================================== -->
+
+   <property name="archiveName" value="ChangeLicenceTag"/>
+   
+   <target description="fetch version" depends="-init-project" name="version">
+      <loadproperties srcFile="${src.dir}/org/girod/changelicencetag/config.properties">
+         <filterchain>
+            <linecontains>
+               <contains value="version"/>
+            </linecontains>
+         </filterchain>
+      </loadproperties>
+   </target>    
+   
+   <!-- =================================================================== -->
+   <!-- zip files -->
+   <!-- =================================================================== --> 
+   <target depends="version, -post-init" name="-zipbinaries" >
+      <!-- zip binary files -->
+      <zip compress="true" defaultexcludes="true"
+           zipfile="${dist.dir}/${archiveName}-bin-${version}.zip">
+         <fileset description="bin" dir="${dist.dir}">
+            <include name="**/*.jar"/>
+         </fileset>
+         <fileset description="miscellanous" dir=".">
+            <include name="README.md"/>
+            <include name="LICENSE"/>
+         </fileset>  
+         <fileset description="sample" dir=".">
+            <include name="sample/**.*"/>
+         </fileset>                 
+      </zip>
+   </target>   
+   
+   <target depends="version, -post-init" name="-zipsources">
+      <!-- zip source files -->
+      <zip compress="true" defaultexcludes="true" zipfile="${dist.dir}/${archiveName}-src-${version}.zip">
+         <fileset description="source directory" dir="${src.dir}/..">
+            <include name="src/**/*.java"/>
+            <include name="src/**/*.html"/>
+            <include name="src/**/*.properties"/>
+         </fileset>
+         <fileset description="binaries" dir="${dist.dir}">
+            <include name="ChangeLicenceTag.jar"/>
+         </fileset>
+         <fileset description="miscellanous" dir=".">
+            <include name="README.md"/>
+            <include name="LICENSE"/>
+            <include name="nbproject/**/*.*"/>
+            <include name="build.xml"/>
+         </fileset>
+         <fileset description="sample" dir=".">
+            <include name="sample/**.*"/>
+         </fileset>           
+      </zip>
+   </target>   
+   <target depends="version, -post-init, -zipsources, -zipbinaries" description="create zip files" name="zip"> 
+   </target> 
+   
+   <!-- =================================================================== --> 
+   <!-- NB overwrite targets : jar --> 
+   <!-- =================================================================== --> 
+   <target depends="init,compile,-pre-jar,-do-jar-without-manifest,-post-jar" description="Build JAR." name="jar"/> 
+   <target name="-do-jar-without-manifest"> 
+      <jar description="jar binary file" compress="true" 
+           jarfile="${dist.dir}/ChangeLicenceTag.jar" manifest="${src.dir}/manifest.mf"> 
+         <fileset defaultexcludes="yes" dir="${build.classes.dir}" > 
+            <include name="org/**/*.class"/> 
+            <include name="org/**/*.properties"/>                         
+         </fileset> 
+      </jar>       
+   </target> 
+</project>
