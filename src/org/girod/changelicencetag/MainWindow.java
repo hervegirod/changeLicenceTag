@@ -42,6 +42,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
@@ -80,9 +82,24 @@ public class MainWindow extends JFrame {
    private int countSkipped = 0;
 
    public MainWindow() {
-      super("Change Licence Tags");
+      super();
       this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+      this.setTitle("Change Licence Tags " + getVersion());
       createContent();
+   }
+
+   private String getVersion() {
+      String version = "";
+      try {
+         URL url = getClass().getResource("config.properties");
+         try (BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()))) {
+            PropertyResourceBundle bundle = new PropertyResourceBundle(in);
+            version = bundle.getString("version");
+         }
+      } catch (IOException e) {
+         e.printStackTrace();
+      }
+      return version;
    }
 
    private void selectNewLicenceTag(File file) {
