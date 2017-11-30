@@ -53,6 +53,7 @@
          <fileset description="source directory" dir="${src.dir}/..">
             <include name="src/**/*.java"/>
             <include name="src/**/*.html"/>
+            <include name="src/**/*.mf"/>
             <include name="src/**/*.properties"/>
          </fileset>
          <fileset description="binaries" dir="${dist.dir}">
