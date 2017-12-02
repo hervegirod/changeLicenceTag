@@ -44,13 +44,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.PropertyResourceBundle;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -65,24 +62,19 @@ import javax.swing.JTextField;
 
 /**
  *
- * @since 0.1
+ * @version 0.2
  */
 public class MainWindow extends JFrame {
-   private final List<String> newTag = new ArrayList<>();
-   private static final Pattern DATES = Pattern.compile("\\d+");
+   private final Options options = new Options();
+   private ChangeLicenseEngine engine;
+   private File dir = null;
    private JTextField dirField = null;
    private JTextField tagField = null;
    private JTextField propsField = null;
-   private File dir = null;
-   private String filter = null;
-   private String currentDate = null;
-   private int countProcessed = 0;
-   private int countChanged = 0;
-   private final List<File> skippedFiles = new ArrayList<>();
-   private int countSkipped = 0;
 
    public MainWindow() {
       super();
+      engine = new ChangeLicenseEngine(options);
       this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
       this.setTitle("Change Licence Tags " + getVersion());
       createContent();
@@ -104,13 +96,14 @@ public class MainWindow extends JFrame {
 
    private void selectNewLicenceTag(File file) {
       try {
-         storeNewTag(file);
+         engine.storeNewTag(file);
       } catch (IOException e) {
          e.printStackTrace();
       }
    }
 
    private void setProperties(File file) {
+      options.reset();
       try {
          try (BufferedReader in = new BufferedReader(new FileReader(file))) {
             PropertyResourceBundle bundle = new PropertyResourceBundle(in);
@@ -120,10 +113,10 @@ public class MainWindow extends JFrame {
                String value = bundle.getString(key);
                if (value != null) {
                   if (key.equals("filter")) {
-                     filter = value.trim();
+                     options.filter = value.trim();
                   }
                   if (key.equals("date")) {
-                     currentDate = value.trim();
+                     options.currentDate = value.trim();
                   }
                }
             }
@@ -261,42 +254,14 @@ public class MainWindow extends JFrame {
       pane.add(Box.createVerticalGlue());
    }
 
-   private void storeNewTag(File file) throws IOException {
-      try (BufferedReader in = new BufferedReader(new FileReader(file))) {
-         boolean first = true;
-         while (true) {
-            String line = in.readLine();
-            if (line != null) {
-               if (first) {
-                  first = false;
-               } else {
-                  newTag.add("\n");
-               }
-               newTag.add(line);
-            } else {
-               break;
-            }
-         }
-      }
-   }
-
    private void changeLicenceTags() throws IOException {
-      countProcessed = 0;
-      countChanged = 0;
-      countSkipped = 0;
-      skippedFiles.clear();
-      if (dir == null || newTag.isEmpty()) {
-         System.out.println("Parameters incorrect");
-      } else {
-         changeLicenceTags(dir);
-         System.out.println("finished, " + countProcessed + " files processed, " + countChanged + " files changed, skipped " + countSkipped);
-         if (!skippedFiles.isEmpty()) {
-            showSkippedFiles();
-         }
+      List<File> skippedFiles = engine.changeLicenceTags(dir);
+      if (skippedFiles != null && !skippedFiles.isEmpty()) {
+         showSkippedFiles(skippedFiles);
       }
    }
 
-   private void showSkippedFiles() {
+   private void showSkippedFiles(List<File> skippedFiles) {
       JTextArea textArea = new JTextArea();
       StringBuilder buf = new StringBuilder();
       Iterator<File> it = skippedFiles.iterator();
@@ -309,162 +274,76 @@ public class MainWindow extends JFrame {
       }
       textArea.setText(buf.toString());
       JDialog dialog = new JDialog(this, "Skipped Files");
-      dialog.getContentPane().add(new JScrollPane(textArea));
+      Container pane = dialog.getContentPane();
+      pane.setLayout(new BorderLayout());
+      pane.add(new JScrollPane(textArea), BorderLayout.CENTER);
+
+      JPanel printPanel = new JPanel();
+      JButton okButton = new JButton("OK");
+      JButton printButton = new JButton("Print");
+      okButton.addActionListener(new ActionListener() {
+         @Override
+         public void actionPerformed(ActionEvent e) {
+            dialog.dispose();
+         }
+      });
+      printButton.addActionListener(new ActionListener() {
+         @Override
+         public void actionPerformed(ActionEvent e) {
+            print(skippedFiles);
+         }
+      });
+      printPanel.add(okButton);
+      printPanel.add(printButton);
+
+      pane.add(printPanel, BorderLayout.SOUTH);
+
       dialog.setSize(500, 700);
       dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
       dialog.setVisible(true);
    }
 
-   private void changeLicenceTags(File dir) throws IOException {
-      File[] files = dir.listFiles();
-      if (files != null && files.length > 0) {
-         for (int i = 0; i < files.length; i++) {
-            File child = files[i];
-            if (child.isDirectory()) {
-               changeLicenceTags(child);
-            } else if (child.getName().endsWith(".java")) {
-               changeLicenceTag(child);
-            }
+   /**
+    * Print the content of the panel as html.
+    */
+   private void print(List<File> skippedFiles) {
+      JFileChooser chooser = new JFileChooser();
+      chooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
+      chooser.setDialogTitle("Set HTML File");
+      chooser.setDialogType(JFileChooser.SAVE_DIALOG);
+      chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+      int ret = chooser.showOpenDialog(this);
+      if (ret == JFileChooser.APPROVE_OPTION) {
+         File file = chooser.getSelectedFile();
+         String name = file.getName();
+         int index = name.lastIndexOf('.');
+         if (index == -1) {
+            name = name + ".html";
+            file = new File(file.getParentFile(), name);
+         }
+         try {
+            printImpl(skippedFiles, file);
+         } catch (IOException e) {
+            e.printStackTrace();
          }
       }
    }
 
-   private void changeLicenceTag(File file) throws IOException {
-      countProcessed++;
-      List<String> oldContent;
-      try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-         oldContent = new ArrayList<>();
-         boolean first = true;
-         while (true) {
-            String line = reader.readLine();
-            if (line != null) {
-               if (first) {
-                  first = false;
-               } else {
-                  oldContent.add("\n");
-               }
-               oldContent.add(line);
-            } else {
-               break;
-            }
-         }
-      }
-      if (!oldContent.isEmpty()) {
-         boolean isFiltered = filter(oldContent);
-         if (isFiltered) {
-            String firstLine = oldContent.get(0);
-            if (firstLine.trim().startsWith("/*")) {
-               countChanged++;
-               String date = getDate(oldContent);
-               List<String> newContent = replaceLicenceTag(oldContent, date);
-               try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-                  Iterator<String> it = newContent.iterator();
-                  while (it.hasNext()) {
-                     String line = it.next();
-                     writer.append(line);
-                  }
-                  writer.flush();
-               }
-            } else {
-               skippedFiles.add(file);
-               countSkipped++;
-            }
-         } else {
-            skippedFiles.add(file);
-            countSkipped++;
-         }
-      }
-   }
-
-   private List<String> replaceLicenceTag(List<String> oldContent, String date) {
-      List<String> newContent = new ArrayList<>();
-      boolean inTag = true;
-
-      Iterator<String> it = newTag.iterator();
-      while (it.hasNext()) {
-         String line = it.next();
-         int index = line.indexOf("$date");
-         if (index != -1) {
-            line = line.substring(0, index) + date + line.substring(index + 5);
-         }
-         newContent.add(line);
-      }
-
-      it = oldContent.iterator();
-      while (it.hasNext()) {
-         String line = it.next();
-         if (!inTag) {
-            newContent.add(line);
-         } else if (line.trim().endsWith("*/")) {
-            inTag = false;
-         }
-      }
-      return newContent;
-   }
-
-   private boolean filter(List<String> content) {
-      if (filter == null) {
-         return true;
-      } else {
-         Iterator<String> it = content.iterator();
+   private void printImpl(List<File> skippedFiles, File file) throws IOException {
+      try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+         Iterator<File> it = skippedFiles.iterator();
          while (it.hasNext()) {
-            String line = it.next();
-            if (line.contains(filter)) {
-               return true;
-            }
+            File skippedFile = it.next();
+            String path = skippedFile.getPath();
+            path = path.replace("\\", "/");
+            String hyperlink = "<a href=\"file://" + path + "\">" + path + "</a>";
+            writer.append(hyperlink);
+            writer.newLine();
+            writer.append("<br/>");
+            writer.newLine();
          }
-         return false;
+         writer.flush();
       }
-   }
-
-   private String getDate(List<String> content) {
-      Iterator<String> it = content.iterator();
-      StringBuilder buf = new StringBuilder();
-      boolean foundLine = false;
-      while (it.hasNext()) {
-         String line = it.next();
-         Matcher m = DATES.matcher(line);
-
-         int start = 0;
-         while (true) {
-            boolean founded;
-            if (start == 0) {
-               founded = m.find();
-            } else {
-               founded = m.find(start);
-            }
-            if (founded) {
-               foundLine = true;
-               start = m.start();
-               int end = m.end();
-               String group = line.substring(start, end);
-               if (!buf.toString().isEmpty()) {
-                  buf.append(", ");
-               }
-               buf.append(group);
-               start = end + 1;
-               if (start >= line.length() - 1) {
-                  break;
-               }
-            } else {
-               break;
-            }
-         }
-         if (foundLine) {
-            break;
-         }
-      }
-      String date = buf.toString();
-      if (date.isEmpty()) {
-         return null;
-      }
-      if (currentDate != null) {
-         String _date = date.trim();
-         if (!_date.endsWith(currentDate) && !_date.endsWith(",")) {
-            date += ", " + currentDate;
-         }
-      }
-      return date;
    }
 
    /**
