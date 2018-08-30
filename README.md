@@ -27,8 +27,8 @@ Note that the filters won't take the case into account for their checks.
 
 # Basic Example
 For the following properties file:
-  filter=GNU General Public License
-  date=2017
+> filter=GNU General Public License
+> date=2017
 
 And the new license being a LGPL license text.
 
@@ -36,9 +36,9 @@ Only files with a "GNU General Public License" tag will be changed to LGPL. The 
 
 # Complete Example
 For the following properties file:
-  filter=GNU General Public License
-  filterCopyrightOnlySkip=do not alter or remove
-  date=2017
+> filter=GNU General Public License
+> filterCopyrightOnlySkip=do not alter or remove
+> date=2017
 
 And the new license being a LGPL license text.
 
