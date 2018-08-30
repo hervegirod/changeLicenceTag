@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2017, Herve Girod
+Copyright (c) 2017, 2018 Herve Girod
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -62,11 +62,11 @@ import javax.swing.JTextField;
 
 /**
  *
- * @version 0.2
+ * @version 0.3
  */
 public class MainWindow extends JFrame {
    private final Options options = new Options();
-   private ChangeLicenseEngine engine;
+   private final ChangeLicenseEngine engine;
    private File dir = null;
    private JTextField dirField = null;
    private JTextField tagField = null;
@@ -113,10 +113,13 @@ public class MainWindow extends JFrame {
                String value = bundle.getString(key);
                if (value != null) {
                   if (key.equals("filter")) {
-                     options.filter = value.trim();
-                  }
-                  if (key.equals("date")) {
+                     options.filter = value.trim().toLowerCase();
+                  } else if (key.equals("date")) {
                      options.currentDate = value.trim();
+                  } else if (key.equals("filterCopyrightOnly")) {
+                     options.filterCopyrightOnly = value.trim().toLowerCase();
+                  } else if (key.equals("filterCopyrightOnlySkip")) {
+                     options.filterCopyrightOnlySkip = value.trim().toLowerCase();
                   }
                }
             }

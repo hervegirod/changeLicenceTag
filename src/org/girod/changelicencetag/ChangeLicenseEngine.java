@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2017, Herve Girod
+Copyright (c) 2017, 2018 Herve Girod
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -45,10 +45,10 @@ import java.util.regex.Pattern;
 
 /**
  *
- * @since 0.2
+ * @version 0.3
  */
 public class ChangeLicenseEngine {
-   private Options options;
+   private final Options options;
    private static final Pattern DATE = Pattern.compile("\\d+");
    private static final Pattern DATE2 = Pattern.compile("(.*-\\s*)(\\d+)");
    private final List<String> newTag = new ArrayList<>();
@@ -187,14 +187,25 @@ public class ChangeLicenseEngine {
       if (options.filter == null) {
          return true;
       } else {
+         boolean isOK = false;
          Iterator<String> it = content.iterator();
          while (it.hasNext()) {
             String line = it.next();
-            if (line.contains(options.filter)) {
-               return true;
+            String theLine = line.toLowerCase();
+            if (theLine.contains(options.filter)) {
+               isOK = true;
+            } else {
+               if (options.filterCopyrightOnly != null && theLine.contains("copyright")) {
+                  if (!theLine.contains(options.filterCopyrightOnly)) {
+                     if (options.filterCopyrightOnlySkip == null || (options.filterCopyrightOnlySkip != null && !theLine.contains(options.filterCopyrightOnlySkip))) {
+                        isOK = false;
+                        break;
+                     }
+                  }
+               }
             }
          }
-         return false;
+         return isOK;
       }
    }
 

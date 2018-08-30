@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2017, Herve Girod
+Copyright (c) 2017, 2018 Herve Girod
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -34,13 +34,21 @@ package org.girod.changelicencetag;
 /**
  * The options.
  *
- * @since 0.2
+ * @version 0.3
  */
 public class Options {
    /**
     * The filter which indicates the only licences which will be processed (may be null).
     */
    public String filter = null;
+   /**
+    * The filter which indicates the only copyrights which will be processed (may be null).
+    */
+   public String filterCopyrightOnly = null;
+   /**
+    * The filter which indicates the lines which will not be considered for the filterCopyrightOnly name.
+    */
+   public String filterCopyrightOnlySkip = null;
    /**
     * The date to add to the licences (may be null).
     */
